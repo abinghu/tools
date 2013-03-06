@@ -14,20 +14,51 @@ public:
     ~printer(){}
 	void printTime()
 	{
-		time_t now;
-		time(&now);
-		struct tm time;
-		localtime_s(&time, &now);
-		std::cout << time.tm_mon+1 << "月"
-			<< time.tm_mday << "日"
-			<< "  "
-			<< time.tm_hour << ":"
-			<< time.tm_min << ":"
-			<< time.tm_sec;
+		DWORD liveTime = GetTickCount()/1000;
+		struct tm formatTime = FormatTime(liveTime);
+
+		std::cout << "已开机:"
+			<< formatTime.tm_mday << "日"
+			<< formatTime.tm_hour << "时"
+			<< formatTime.tm_min << "分"
+			<< formatTime.tm_sec << "秒";
 		std::cout << "\r";
 
 		m_timer.expires_at(m_timer.expires_at()+boost::posix_time::seconds(1));
 		m_timer.async_wait(boost::bind(&printer::printTime, this));
+	}
+protected:
+	// 将以秒为单位的时间格式化为tm结构
+	struct tm FormatTime(DWORD liveTime)
+	{
+		struct tm formatTime;
+		ZeroMemory(&formatTime, sizeof(formatTime));
+
+		// 秒
+		formatTime.tm_sec = liveTime%60;
+		if (liveTime/60 == 0)
+			return formatTime;
+		else
+			liveTime = liveTime / 60;
+
+		// 分
+		formatTime.tm_min = liveTime%60;
+		if (liveTime/60 == 0)
+			return formatTime;
+		else
+			liveTime = liveTime / 60;
+
+		// 时
+		formatTime.tm_hour = liveTime%24;
+		if (liveTime/24 == 0)
+			return formatTime;
+		else 
+			liveTime = liveTime / 24;
+
+		// 日，不可能超过一个月吧
+		formatTime.tm_mday = liveTime%30;
+
+		return formatTime;
 	}
 
 private:
@@ -53,7 +84,7 @@ int main(int argc, char *argv[])
 		<< "  "
 		<< sysStartTime.tm_hour << ":"
 		<< sysStartTime.tm_min << ":"
-		<< sysStartTime.tm_sec << std::endl;
+		<< sysStartTime.tm_sec << "\n\n";
 
 	// 实时显示当前时间
 	boost::asio::io_service io;
